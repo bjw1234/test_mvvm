@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>观察者模式</title>
+</head>
+<body>
+	<script type="text/javascript" src="watcher.js"></script>
+	<script type="text/javascript">
+		var shoeObj = {};
+		shoeObj.list = [];
+		shoeObj.listen = function(key,fn){			
+			if(!this.list[key]){
+				this.list[key] = [];
+			}
+			// 加入缓存列表
+			this.list[key].push(fn);		
+		}
+		shoeObj.trigger = function(){
+			var key = Array.prototype.shift.call(arguments);
+			if(!this.list[key] || this.list[key].length === 0){
+				return;
+			}
+			// 取出该key对应的所有观察者（回调函数）
+			var fns = this.list[key];
+			for(var i=0,fn;fn=fns[i];i++){
+				fn.apply(this,arguments);
+			}
+		}
+
+		// 添加订阅者
+		shoeObj.listen('红色',function(size){
+			console.log("小红监听红色:"+size);
+		});
+		shoeObj.listen('红色',function(size){
+			console.log("小花监听红色:"+size);
+		});
+
+		shoeObj.listen('黑色',function(size){
+			console.log("小明监听黑色:"+size);
+		});
+
+		
+/************************************************/
+
+		/**
+		 * 对发布订阅进行封装				
+		 */
+		var event = {
+			list:{}, // 订阅缓存列表			
+			listen:function(key,fn){
+				if(!this.list[key]){
+					this.list[key] = [];
+				}
+				if(fn || typeof fn === "function"){
+					this.list[key].push(fn);
+				}
+			},
+			trigger:function(){
+				var key = Array.prototype.shift.call(arguments);
+				var fns = this.list[key];
+				if(!fns || fns.length === 0){
+					return;
+				}
+				for(var i=0,fn;fn=fns[i];i++){
+					fn.apply(this,arguments);
+				}
+			},
+			remove:function(key,fn){
+				var fns = this.list[key];
+				if(!fns || fns.length === 0){
+					return;
+				}
+				if(!fn){ // 删除该key对应的所有订阅者
+					fns.length = 0;
+				}
+				for(var i = 0; i < fns.length; i++){
+					var _fn = fns[i];
+					if(_fn === fn){
+						 fns.splice(i,1); // 删除订阅者的回调函数
+					}
+				}
+
+			}
+		}
+
+		// 初始化事件
+		var initEvent = function(obj){
+			for(i in event){
+				obj[i] = event[i];
+			}
+
+		}
+
+		var shoes = {};
+		initEvent(shoes);
+		var fn;
+		// 添加订阅者
+		shoes.listen('红色',function(size){
+			console.log("小红监听红色:"+size);
+		});
+		shoes.listen('红色',fn=function(size){
+			console.log("小花监听红色:"+size);
+		});
+
+		shoes.listen('黑色',function(size){
+			console.log("小明监听黑色:"+size);
+		});
+
+		// 删除订阅
+		// shoes.remove('红色',fn);
+
+		// shoes.trigger('红色',40);
+		// shoes.trigger('黑色',43);
+
+
+
+/*********************************************************/
+// 添加订阅者
+// 使订阅者订阅不同品牌的鞋子
+
+watcher.listen('阿迪达斯',function(color,size){
+	console.log("小明监听阿迪达斯品牌的鞋子...颜色："+color+"，尺码："+size);
+});
+
+watcher.listen('乔丹',function(color,size){
+	console.log("小红监听乔丹品牌的鞋子...颜色："+color+"，尺码："+size);
+});
+
+
+// 鞋店有货啦，于是发布了一条消息
+watcher.trigger('乔丹','红色',42);
+watcher.trigger('阿迪达斯','黑色',43);
+	</script>
+</body>
+</html>

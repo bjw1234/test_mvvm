@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>数据双向绑定Test</title>
+</head>
+<body>
+	<div id="app">
+		<div>
+			<input type="text" v-model="number">
+			<button v-click="increment">增加</button>
+		</div>
+		<h3>{{ number }}</h3>
+		<h3 v-bind="number"></h3>
+		<h1>{{ sum }}</h1>
+	</div>
+	<script type="text/javascript">
+
+
+	function myVue(options){
+		this.$el = document.querySelector(options.el);
+		this.$data = options.data;
+		this.$methods = options.methods;
+
+		// 监听器		
+		this._binding = {};
+		// 监听数据变化
+		this._observe(this.$data);
+		console.log(this.$data.number);
+		// 解析指令
+		this._compile(this.$el);		
+	}
+
+	// 监听数据变化函数
+	myVue.prototype._observe = function(obj){		
+		for(let key in obj){
+			if(obj.hasOwnProperty(key)){
+				this._binding[key] = {
+					_directives: [] // 指令集合
+				};				
+			}
+			if(typeof key === 'object'){
+				this._observe(key);
+			}
+			let value = obj[key];
+			// 定义get、set方法
+			let binding = this._binding[key];
+			// debugger;
+			Object.defineProperty(this.$data,key,{
+				enumerable:true,
+				configurable:true,
+				get:function(){
+					return value;
+				},
+				set:function(val){
+					if(value !== val){
+						value = val;						
+						// 更新视图				
+						binding._directives.forEach(function(item){
+							item.update();
+						});
+					}
+				}
+			});	
+		}	
+	}
+
+	// 解析指令
+	myVue.prototype._compile = function(root){		
+		var _this = this;
+		var nodes = root.children;
+		for(var i=0;i<nodes.length;i++){
+			var node = nodes[i];
+			if(node.children.length){
+				this._compile(node);
+			}
+
+			// 找到相应的指令
+			if(node.hasAttribute('v-click')){				
+				node.onclick = (function(){
+					var arrVal = node.getAttribute('v-click');
+					return _this.$methods[arrVal].bind(_this.$data);					
+				})();
+			}
+
+			// v-model指令
+			if(node.hasAttribute('v-model')){
+				if(node.tagName === 'INPUT' || node.tagName === 'TEXTAREA'){
+					node.addEventListener('input',(function(i){
+						var arrVal = node.getAttribute('v-model');
+						// 监听该数据变化				
+						_this._binding[arrVal]._directives.push(new Watcher(
+							node,
+							_this,
+							arrVal,
+							'value'							
+						));
+						 return function(){						 	
+						 	// 修改数据
+						 	_this.$data[arrVal] = nodes[i].value;
+						 }
+					})(i));
+				}
+			}
+
+			// v-bind指令
+			if(node.hasAttribute('v-bind')){	
+				var arrVal = node.getAttribute('v-bind');			
+				// 监听数据
+				_this._binding[arrVal]._directives.push(new Watcher(
+					node,
+					_this,
+					arrVal,
+					'innerHTML'							
+				));
+			}
+
+			// 大胡子模板语法
+			var reg = /\{\{\s?(\w+)\s?\}\}/g;
+			var innerText = node.textContent;
+			if(reg.test(innerText)){
+				var arrVal;
+				node.innerText.replace(reg,function(m,p){
+					arrVal = p;
+				});
+				// 监听数据
+				_this._binding[arrVal]._directives.push(new Watcher(
+					node,
+					_this,
+					arrVal,
+					'innerHTML'							
+				));
+			}
+
+		}
+	}
+
+
+
+function Watcher(el,vm,exp,attr){
+	this.el = el; 
+	this.vm = vm;
+	this.exp = exp; 
+	this.attr = attr; 
+	this.update();
+}
+
+// 更新数据
+Watcher.prototype.update = function(){
+	this.el[this.attr] = this.vm.$data[this.exp];
+	// node.innerHTML = this.data.number;
+}
+
+
+
+	var app = new myVue({
+		el:'#app',
+		data:{
+			number: 1,
+			sum: 2,
+			// fuck:32
+		},
+		methods:{
+			increment:function(){		
+				this.number++;						
+			}
+		}		
+	});
+
+	</script>
+</body>
+</html>
